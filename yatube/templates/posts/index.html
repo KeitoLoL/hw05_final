@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block head_title %}
+  {{title}}
+{% endblock %}
+
+{% block title %}
+{% endblock %}
+
+{% block content%}
+  {% include 'posts/includes/switcher.html' %}
+  {% include 'posts/includes/post_body.html' %}
+  {% include 'includes/paginator.html' %}
+{% endblock %}

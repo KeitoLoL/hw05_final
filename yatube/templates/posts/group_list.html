@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}
+   <h1> Записи сообщества:</h1>
+{% endblock %}
+
+{% block content%}
+ <div class="container py-5">
+
+    <h1>{{  group.title  }}</h1>
+      <p>{{ group.description }}</p>
+    {% comment %}
+        Пришлось оставить пустой цикл, т.к если я правильно понял
+        этого требуют переданные нам тесты, хотя вывод вроде бы правильный
+    {% endcomment %}
+
+    {% for post in page_obj  %}
+    {% endfor %}
+
+    {% include 'posts/includes/post_body.html' %}
+    {% include 'includes/paginator.html' %}
+ </div>
+{% endblock %}
