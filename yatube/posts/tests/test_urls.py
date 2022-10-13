@@ -36,14 +36,11 @@ class PostURLTests(TestCase):
         # Создаем авторизованный клиент
         self.authorized_client_no_author.force_login(self.not_author)
         self.authorized_client.force_login(self.author)
-        #cache.clear()
-        #self.authorized_client.force_login(self.user)
 
     def test_urls(self):
         tested_urls_all = {
             'index.html': '',
             'group_list.html': '/group/test_group/',
-            #'profile.html': '/profile/test_author/',
             'post_detail.html': f'/posts/{self.post.pk}/',
         }
         tested_urls_auth = {

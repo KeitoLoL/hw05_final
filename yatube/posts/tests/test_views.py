@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from django import forms
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import Client, TestCase
@@ -68,16 +67,3 @@ class PostVIEWSTests(TestCase):
         response = self.authorized_client.get(reverse(
             'posts:index') + '?page=2')
         self.assertEqual(len(response.context['page_obj']), 5)
-
-    #def test_views_cache(self):
-    #    self.post = Post.objects.create(
-    #        text=f'Тестовый текст',
-    #        group=self.group,
-    #        author=self.user,
-    #        pub_date=datetime.today(),
-    #    )
-    #    response = self.authorized_client.get(reverse('posts:index'))
-    #    self.post.delete()
-    #   # print(response.content)
-
-

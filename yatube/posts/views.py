@@ -29,12 +29,15 @@ def group_posts(request, slug):
     return render(request, 'posts/group_list.html', context)
 
 
-#@login_required
 def profile(request, username):
     author = get_object_or_404(User, username=username)
     posts = author.posts.all()
     page_obj = page_setup(request, posts)
-    following = Follow.objects.filter(author=author, user=request.user).exists()
+    if request.user.is_authenticated:
+        following = Follow.objects.filter(author=author,
+                                          user=request.user).exists()
+    else:
+        following = False
     context = {
         'author': author,
         'page_obj': page_obj,
@@ -63,7 +66,7 @@ def post_create(request):
     form = PostForm(
         request.POST or None,
         files=request.FILES or None
-        )
+    )
     if form.is_valid():
         post = form.save(commit=False)
         post.author = request.user
@@ -122,7 +125,8 @@ def follow_index(request):
 @login_required
 def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
-    if Follow.objects.filter(author=author, user=request.user).exists() or request.user == author:
+    if (Follow.objects.filter(author=author, user=request.user).exists()
+            or request.user == author):
         return redirect('posts:profile', username=username)
     Follow.objects.create(author=author, user=request.user)
     return redirect('posts:profile', username=username)
@@ -136,5 +140,3 @@ def profile_unfollow(request, username):
     else:
         return redirect('posts:profile', username=username)
     return redirect('posts:profile', username=username)
-
-
