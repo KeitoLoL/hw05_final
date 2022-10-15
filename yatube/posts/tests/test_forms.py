@@ -1,34 +1,10 @@
-from datetime import datetime
-
-from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
 from django.urls import reverse
 
-from ..models import Group, Post
+from ..models import Post
+from .input_data_for_tests import InputDataClass
 
-User = get_user_model()
 
-
-class PostFormsTests(TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.user = User.objects.create_user(username='test_author')
-        cls.authorized_client = Client()
-        cls.authorized_client.force_login(cls.user)
-
-        cls.group = Group.objects.create(
-            title='Тестовый заголовок',
-            slug='test_group',
-            description='Тестовая группа',
-        )
-        cls.post = Post.objects.create(
-            text='Тестовый текст',
-            group=cls.group,
-            author=cls.user,
-            pub_date=datetime.today(),
-        )
+class PostFormsTests(InputDataClass):
 
     def test_create_post_form(self):
 
@@ -36,7 +12,7 @@ class PostFormsTests(TestCase):
         form_data = {
             'text': 'Тестовый текст',
             'group': '',
-            'author': self.user,
+            'author': self.author,
         }
 
         response = self.authorized_client.post(
@@ -54,7 +30,7 @@ class PostFormsTests(TestCase):
         form_data = {
             'text': 'Тестовый текст обновлен',
             'group': '',
-            'author': self.user,
+            'author': self.author,
         }
 
         response = self.authorized_client.post(
@@ -65,3 +41,17 @@ class PostFormsTests(TestCase):
         self.post.refresh_from_db()
         self.assertEqual(Post.objects.count(), posts_count)
         self.assertContains(response, 'Тестовый текст обновлен')
+
+    def test_create_comment_form(self):
+        comment_count = self.post.comments.all().count()
+        form_data = {
+            'text': 'Тестовый комментарий',
+        }
+        response = self.authorized_client.post(
+            reverse('posts:add_comment', kwargs={'post_id': self.post.pk}),
+            data=form_data,
+            follow=True,
+        )
+        self.assertRedirects(response, reverse(
+            'posts:post_detail', kwargs={'post_id': self.post.pk}))
+        self.assertEqual(self.post.comments.all().count(), comment_count + 1)

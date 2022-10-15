@@ -48,13 +48,9 @@ def profile(request, username):
 
 def post_detail(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
-    author = post.author
-    comments = post.comments.all()
     form = CommentForm()
     context = {
         'post': post,
-        'author': author,
-        'comments': comments,
         'form': form,
 
     }
@@ -115,7 +111,6 @@ def follow_index(request):
     posts = Post.objects.filter(author__following__user=request.user)
     page_obj = page_setup(request, posts)
     context = {
-        'posts': posts,
         'page_obj': page_obj,
     }
 
@@ -124,19 +119,17 @@ def follow_index(request):
 
 @login_required
 def profile_follow(request, username):
+    """ Тесты требуют наличие этого условия """""
     author = get_object_or_404(User, username=username)
     if (Follow.objects.filter(author=author, user=request.user).exists()
             or request.user == author):
         return redirect('posts:profile', username=username)
-    Follow.objects.create(author=author, user=request.user)
+    Follow.objects.get_or_create(author=author, user=request.user)
     return redirect('posts:profile', username=username)
 
 
 @login_required
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
-    if Follow.objects.filter(author=author, user=request.user).exists():
-        Follow.objects.filter(author=author, user=request.user).delete()
-    else:
-        return redirect('posts:profile', username=username)
+    Follow.objects.filter(author=author, user=request.user).delete()
     return redirect('posts:profile', username=username)

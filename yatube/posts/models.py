@@ -98,6 +98,9 @@ class Follow(models.Model):
         help_text='Автор, на которого кто то подписался',
     )
 
-    def __str__(self):
+    class Meta:
+        verbose_name = 'Подписка'
+        unique_together = ('user', 'author',)
 
+    def __str__(self):
         return f'{str(self.author)} - author, {str(self.user)} - follower'

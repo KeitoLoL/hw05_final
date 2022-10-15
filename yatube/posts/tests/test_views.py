@@ -1,41 +1,32 @@
-from datetime import datetime
-
-from django.contrib.auth import get_user_model
-from django.core.cache import cache
-from django.test import Client, TestCase
 from django.urls import reverse
 
-
-from ..models import Group, Post
-
-User = get_user_model()
+from .input_data_for_tests import InputDataClass
+from ..models import Comment, Follow, Group, Post
 
 
-class PostVIEWSTests(TestCase):
+class PaginatorTest(InputDataClass):
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.user = User.objects.create_user(username='test_author')
-        cls.authorized_client = Client()
-        cls.group = Group.objects.create(
-            title='Тестовый заголовок',
-            slug='test_group',
-            description='Тестовая группа',
-        )
-
-        for i in range(15):
+        for i in range(14):
             cls.post = Post.objects.create(
                 text=f'Тестовый текст {i}',
                 group=cls.group,
-                author=cls.user,
-                pub_date=datetime.today(),
+                author=cls.author,
             )
 
-    def setUp(self):
-        # Создаем авторизованный клиент
-        cache.clear()
-        self.authorized_client.force_login(self.user)
+    def test_first_page_contains_ten_records(self):
+        response = self.authorized_client.get(reverse('posts:index'))
+        self.assertEqual(len(response.context['page_obj']), 10)
+
+    def test_second_page_contains_five_records(self):
+        response = self.authorized_client.get(reverse(
+            'posts:index') + '?page=2')
+        self.assertEqual(len(response.context['page_obj']), 5)
+
+
+class PostVIEWSTests(InputDataClass):
 
     def test_views_template(self):
 
@@ -59,11 +50,107 @@ class PostVIEWSTests(TestCase):
             'posts:post_edit', kwargs={'post_id': self.post.pk}),)
         self.assertTemplateUsed(response, 'posts/create_post.html')
 
-    def test_first_page_contains_ten_records(self):
-        response = self.authorized_client.get(reverse('posts:index'))
-        self.assertEqual(len(response.context['page_obj']), 10)
+    def test_index_page_show_correct_context(self):
 
-    def test_second_page_contains_five_records(self):
-        response = self.authorized_client.get(reverse(
-            'posts:index') + '?page=2')
-        self.assertEqual(len(response.context['page_obj']), 5)
+        response = self.authorized_client.get(reverse('posts:index'))
+        first_object = response.context['page_obj'][0]
+        self.assertEqual(first_object.text, self.post.text)
+
+    def test_group_page_show_correct_context(self):
+
+        response = self.authorized_client.get(
+            reverse('posts:group_list', kwargs={'slug': 'test_group'}))
+        first_object = response.context['page_obj'][0]
+        self.assertEqual(first_object.text, self.post.text)
+        self.assertEqual(first_object.group, self.post.group)
+
+    def test_profile_page_show_correct_context(self):
+
+        response = self.authorized_client.get(
+            reverse('posts:profile', kwargs={'username': 'test_author'}))
+        first_object = response.context['page_obj'][0]
+        self.assertEqual(first_object.text, self.post.text)
+        self.assertEqual(first_object.author, self.post.author)
+
+    def test_post_have_correct_group(self):
+
+        self.second_group = Group.objects.create(
+            title='Тестовый заголовок',
+            slug='second_group',
+            description='Тестовая группа',
+        )
+
+        self.second_post = Post.objects.create(
+            text='Тестовый текст группы два',
+            group=self.second_group,
+            author=self.author,
+        )
+
+        response = self.authorized_client.get(
+            reverse('posts:group_list', kwargs={'slug': 'second_group'}))
+
+        first_object = response.context['page_obj'][0]
+        self.assertEqual(first_object.text, self.second_post.text)
+        self.assertEqual(first_object.group, self.second_post.group)
+
+        response = self.authorized_client.get(
+            reverse('posts:group_list', kwargs={'slug': 'test_group'}))
+        first_object = response.context['page_obj'][0]
+        self.assertEqual(first_object.text, self.post.text)
+        self.assertEqual(first_object.group, self.post.group)
+
+    def test_follow_guest_client(self):
+
+        response = self.guest_client.get(
+            reverse('posts:profile_follow',
+                    kwargs={'username': 'test_author'}))
+
+        self.assertQuerysetEqual(Follow.objects.all(), [])
+
+    def test_follow_authorized_client(self):
+
+        response = self.authorized_client_no_author.get(
+            reverse('posts:profile_follow',
+                    kwargs={'username': 'test_author'}))
+        self.assertQuerysetEqual(Follow.objects.all(), [
+            '<Follow: test_author - author, not_author - follower>'])
+
+    def test_double_follow_authorized_client(self):
+
+        response = self.authorized_client_no_author.get(
+            reverse('posts:profile_follow',
+                    kwargs={'username': 'test_author'}))
+        self.assertQuerysetEqual(Follow.objects.all(), [
+            '<Follow: test_author - author, not_author - follower>'])
+
+    def test_unfollow_without_follow(self):
+
+        response = self.authorized_client_no_author.get(
+            reverse('posts:profile_unfollow',
+
+                    kwargs={'username': 'test_author'}))
+        self.assertQuerysetEqual(Follow.objects.all(), [])
+        response = self.authorized_client_no_author.get(
+            reverse('posts:profile_unfollow',
+                    kwargs={'username': 'test_author'}))
+        self.assertQuerysetEqual(Follow.objects.all(), [])
+        self.assertRedirects(response, '/profile/test_author/')
+
+    def test_comment_guest_client(self):
+
+        response = self.guest_client.get(
+            reverse('posts:add_comment', kwargs={'post_id': self.post.pk}),
+            data={'text': 'тестовый комментарий'},
+            follow=True
+        )
+        self.assertQuerysetEqual(Comment.objects.all(), [])
+
+    def test_comment_authorized_client(self):
+
+        response = self.authorized_client_no_author.post(
+            reverse('posts:add_comment', kwargs={'post_id': self.post.pk}),
+            data={'text': 'тестовый комментарий'},
+            follow=True
+        )
+        self.assertQuerysetEqual(Comment.objects.all(),
+                                 ['<Comment: тестовый комментарий>'])
