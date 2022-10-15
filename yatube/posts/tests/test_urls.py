@@ -21,19 +21,19 @@ class PostURLTests(InputDataClass):
 
     def test_urls_auth(self):
 
-        tested_urls_auth = {
-            'create_post.html': '/create/',
-            'create_post.html': f'/posts/{self.post.pk}/edit/',
-            'follow.html': '/follow/',
-        }
+        tested_urls_auth = [
+            ('create_post.html', '/create/'),
+            ('create_post.html', f'/posts/{self.post.pk}/edit/'),
+            ('follow.html', '/follow/')
+        ]
 
-        for name, url in tested_urls_auth.items():
+        for name, url in tested_urls_auth:
             response = self.guest_client.get(url)
             self.assertRedirects(response, f'/auth/login/?next={url}')
             response = self.authorized_client.get(url)
             self.assertEqual(response.status_code, 200)
             self.assertTemplateUsed(response, f'posts/{name}')
-
+#
         response = self.authorized_client_no_author.get(
             f'/posts/{self.post.pk}/edit/')
         self.assertRedirects(response, f'/posts/{self.post.pk}/')

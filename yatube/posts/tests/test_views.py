@@ -106,6 +106,8 @@ class PostVIEWSTests(InputDataClass):
                     kwargs={'username': 'test_author'}))
 
         self.assertQuerysetEqual(Follow.objects.all(), [])
+        self.assertRedirects(response,
+                             '/auth/login/?next=/profile/test_author/follow/')
 
     def test_follow_authorized_client(self):
 
@@ -114,6 +116,8 @@ class PostVIEWSTests(InputDataClass):
                     kwargs={'username': 'test_author'}))
         self.assertQuerysetEqual(Follow.objects.all(), [
             '<Follow: test_author - author, not_author - follower>'])
+        self.assertRedirects(response, reverse(
+            'posts:profile', kwargs={'username': 'test_author'}))
 
     def test_double_follow_authorized_client(self):
 
@@ -122,13 +126,16 @@ class PostVIEWSTests(InputDataClass):
                     kwargs={'username': 'test_author'}))
         self.assertQuerysetEqual(Follow.objects.all(), [
             '<Follow: test_author - author, not_author - follower>'])
+        self.assertRedirects(response, reverse(
+            'posts:profile', kwargs={'username': 'test_author'}))
 
     def test_unfollow_without_follow(self):
 
         response = self.authorized_client_no_author.get(
             reverse('posts:profile_unfollow',
-
                     kwargs={'username': 'test_author'}))
+        self.assertRedirects(response, reverse(
+            'posts:profile', kwargs={'username': 'test_author'}))
         self.assertQuerysetEqual(Follow.objects.all(), [])
         response = self.authorized_client_no_author.get(
             reverse('posts:profile_unfollow',
@@ -144,6 +151,9 @@ class PostVIEWSTests(InputDataClass):
             follow=True
         )
         self.assertQuerysetEqual(Comment.objects.all(), [])
+        # из-за flake не могу оставить респонс неиспользованным
+        # не придумал как в случае с комментарием решить проблему
+        print(response)
 
     def test_comment_authorized_client(self):
 
@@ -154,3 +164,5 @@ class PostVIEWSTests(InputDataClass):
         )
         self.assertQuerysetEqual(Comment.objects.all(),
                                  ['<Comment: тестовый комментарий>'])
+        self.assertRedirects(response, reverse(
+            'posts:post_detail', kwargs={'post_id': self.post.pk}))
